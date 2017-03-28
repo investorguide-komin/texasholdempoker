@@ -1,8 +1,8 @@
 
   <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-    <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12" style="padding:50px">
+    <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="padding:50px">
       <h4>Login</h4>
-      <form action="login.php" method="post">
+      <form action="index.php" method="post">
         <table>
           <tr>
             <td>
@@ -23,16 +23,16 @@
           <tr>
             <td></td>
             <td>
+              <input type="hidden" name="login" value="1"/>
               <input type="submit" value="Log In"/>
             </td>
           </tr>
         </table>
       </form>
     </div>
-    <div class="col-lg-2 col-md-2"></div>
-    <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12" style="padding:50px">
+    <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="padding:50px">
       <h4>Create Account</h4>
-      <form action="register.php" method="post">
+      <form action="index.php" method="post">
         <table>
           <tr>
             <td>
@@ -61,7 +61,20 @@
           <tr>
             <td></td>
             <td>
+              <input type="hidden" name="register" value="1"/>
               <input type="submit" value="Register"/>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2">
+              <hr/>
+              <ul>
+                <? if(isset($this->message)){
+                    echo "<li class='message'>".$this->message."</li>";
+                } ?>
+                <li>Username must be 5-15 characters with alphabets, numbers and underscores only</li>
+                <li>Password must be 8-20 characters and contain at least 1 alphabet, number and symbol</li>
+              </ul>
             </td>
           </tr>
         </table>

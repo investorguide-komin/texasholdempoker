@@ -42,7 +42,7 @@
     // must be 8 characters long + contain atleast 1 alphabet, number and symbol
     function is_allowable_password($password, $password_confirm){
       if($password === $password_confirm){
-        if(preg_match('/^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$/', $password)){
+        if(preg_match('/^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,20}$/', $password)){
           return true;
         }
       }
@@ -51,10 +51,10 @@
 
     // salted hash for password
     function register_user($username, $password){
-      $salted_pasword = password_hash($password, PASSWORD_DEFAULT);
+      $salted_hash = password_hash($password, PASSWORD_DEFAULT);
       $db     = database::get_db();
       $query  = $db->prepare("INSERT INTO `users`(`username`, `password`) VALUES(?,?)");
-      $query->bind_param("ss", $username, $salted_pasword);
+      $query->bind_param("ss", $username, $salted_hash);
       $query->execute();
     }
 
@@ -78,13 +78,28 @@
 
     }
 
-    function login($username, $password){
+    function get_salted_password($username){
       $db = database::get_db();
+      $query  = $db->prepare("SELECT password FROM `users` WHERE username = ?");
+      $query->bind_param("s", $username);
+      $query->execute();
+      $result = $query->get_result();
+      if($result->field_count){
+        return $result->fetch_assoc()["password"];
+      }
+      return false;
+    }
 
-      // get password associated with the user
-      //$salted_password  =
-      if($salted_password && password_verify($password, $salted_password)){
-        return true;
+    function login($args){
+      if(isset($args["username"]) && isset($args["password"])){
+        $username = $args["username"];
+        $password = $args["password"];
+
+        // get password associated with the user
+        $salted_hash  = $this->get_salted_password($username);
+        if($salted_hash && password_verify($password, $salted_hash)){
+          return true;
+        }
       }
       return false;
     }

@@ -12,16 +12,29 @@
       .title{font-family: 'Baloo Bhaina', cursive; font-size:24px;}
       .colorful{color:#ff5252 !important;}
       .message{color:#a72005; font-weight:bold;}
+      .header-links a{border-right:1px solid #eee; padding:7px 11px;}
+      .user-detail{font-weight:bold; margin-right:15px; color:#777;}
+      .btn{padding:5px 11px; font-weight:normal; text-decoration: none !important; color:white !important;}
+      .green-btn{background:#52981b;}
+      .green-btn:hover{background:#3b6d13;}
+      .red-btn{background:#d94324;}
+      .red-btn:hover{background:#ad351d;}
     </style>
   </head>
   <body>
     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 header">
-      <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12">
+      <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12">
         <div class="title">
           <span class="colorful text-bold">Texas Hold'em</span> Poker Online
         </div>
       </div>
-      <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12">
+      <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12">
+        <div class="header-links text-right">
+          <span class="user-detail">Logged in as komin5</span>
+          <a href="home.php">Join Game</a>
+          <a href="javascript:;">See Stats</a>
+          <a href="logout.php">Log Out</a>
+        </div>
       </div>
       <div style="clear:both"></div>
     </div>

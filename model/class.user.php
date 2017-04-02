@@ -20,7 +20,7 @@
     function is_unregistered_username($username){
       $db = database::get_db();
       $query  = $db->prepare("SELECT count(`id`) as count FROM `users` WHERE username = ?");
-      $query->bind_param("s", $username);
+      $query->bind_param("i", $username);
       $query->execute();
       $result = $query->get_result();
       if(!($result->fetch_assoc()["count"])){
@@ -81,7 +81,7 @@
     function get_salted_password($username){
       $db = database::get_db();
       $query  = $db->prepare("SELECT password FROM `users` WHERE username = ?");
-      $query->bind_param("s", $username);
+      $query->bind_param("i", $username);
       $query->execute();
       $result = $query->get_result();
       if($result->field_count){

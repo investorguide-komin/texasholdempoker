@@ -26,7 +26,12 @@
           Dealer
         </div>
       </div>
-      <div class="game-cards" style="height:250px;border-bottom:1px solid red;">
+      <div class="game-area" style="height:250px;border-bottom:1px solid red;">
+        <div class="game-cards text-center" style="height:200px;">
+        </div>
+        <div class="game-pot text-center" style="height:50px;">
+          $1000
+        </div>
       </div>
       <div class="game-players"  style="height:150px;">
         <div class="game-player-1" style="float:left;height:150px;width:25%;">
@@ -70,6 +75,9 @@
   </div>
   <div class="col-md-2 col-md-2 col-sm-12 col-xs-12">
     <b>Poker log</b>
+    <a href="javascript:;" id="type-flop">Flop</a>
+    <a href="javascript:;" id="type-turn">Turn</a>
+    <a href="javascript:;" id="type-river">River</a>
   </div>
 </div>
 
@@ -97,6 +105,27 @@
         });
       }
 
+
+      function load_cards_community(card_type){
+        $.ajax({
+          url: "ajax/cards.php?type=community",
+          async: true,
+          cache: false,
+          type: "post",
+          data: {card_type:card_type},
+          success: function(data){
+            var data  = $.parseJSON(data);
+            if(data != undefined){
+              var community_cards = data.cards;
+              $.each(community_cards, function(i, community_card){
+                // handle the community card (maybe append to a div)
+                $(".game-cards").append(get_card(community_card));
+              });
+            }
+          }
+        });
+      }
+
       function get_card_suit(suit){
         if(suit == "S"){
           return "&spades;";
@@ -116,17 +145,33 @@
         return "black";
       }
 
+      function get_card(card){
+        var card_details = card.split("|");
+        return '<div class="card" style="color:'+get_card_color(card_details[1])+'">'+
+                            '<span class="rank">'+card_details[0]+'</span>'+
+                            '<span class="suit">'+get_card_suit(card_details[1])+'</span>'+
+                        '</div>'
+      }
+
       function make_cards(player_class, cards){
         var target_div = $(".player-cards."+player_class);
         for(var i=0; i<cards.length; i++){
-          var card_details = cards[i].split("|");
-          target_div.append('<div class="card" style="color:'+get_card_color(card_details[1])+'">'+
-                              '<span class="rank">'+card_details[0]+'</span>'+
-                              '<span class="suit">'+get_card_suit(card_details[1])+'</span>'+
-                          '</div>');
+          target_div.append(get_card(cards[i]));
         }
       }
 
       load_cards_dealt();
+
+      $("body").on("click", "#type-flop", function(){
+        load_cards_community("flop");
+      });
+
+      $("body").on("click", "#type-turn", function(){
+        load_cards_community("turn");
+      });
+
+      $("body").on("click", "#type-river", function(){
+        load_cards_community("river");
+      });
     });
 </script>

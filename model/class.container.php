@@ -3,8 +3,6 @@
 	class container {
 
 		function container($args = false) {
-			$this->errors = array();
-			$this->warnings = array();
 			$this->cast($args);
 			return $this;
 		}

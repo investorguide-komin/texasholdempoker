@@ -1,7 +1,8 @@
 <?php
 
-  class user{
-    function __construct(){
+  class user extends container{
+    function __construct($args = false){
+      parent::__construct($args);
     }
 
     // try to login the user from existing session if possible

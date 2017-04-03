@@ -1,7 +1,8 @@
 <?php
 
-  class game{
-    function __construct(){
+  class game extends container{
+    function __construct($args = false){
+      parent::__construct($args);
     }
 
     // create a game and get the game id
@@ -17,6 +18,21 @@
       }
       return false;
     }
+
+    function load_games($active = 1){
+      $games  = array();
+
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT * FROM `game` WHERE is_active=?");
+      $query->bind_param("i", $active);
+      $query->execute();
+      $result = $query->get_result();
+      while ($row = $result->fetch_assoc()){
+          $games[]  = new game($row);
+      }
+      return $games;
+    }
+
 
     // insert cards associated with the game to the db
     function insert_cards(){

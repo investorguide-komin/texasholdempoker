@@ -6,13 +6,13 @@
     }
 
     // create a game and get the game id
-    function create($name){
+    function create($name, $user){
       $db     = database::get_db();
-      $query  = $db->prepare("INSERT INTO `game`(`name`) VALUES(?)");
-      $query->bind_param("s", $name);
+      $query  = $db->prepare("INSERT INTO `game`(`name`, `created_by`) VALUES(?,?)");
+      $query->bind_param("si", $name, $user->id);
       $query->execute();
 
-      if($query->lastInsertId() > 0){
+      if($query->insert_id > 0){
         $this->insert_cards();
         return true;
       }

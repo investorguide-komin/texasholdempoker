@@ -7,15 +7,33 @@
 
     // try to login the user from existing session if possible
     // if session is expired, redirect to home page (login / register)
-    function try_login($redirect_to_login = false){
-      if($redirect_to_login){
-        view::redirect("index.php");
+    function try_login($redirect_to_login = true){
+      if(!$this->is_logged_in()){
+        if($redirect_to_login){
+          view::redirect("index.php");
+        }
       }
     }
 
+    function get_user_agent(){
+      return $_SERVER["HTTP_USER_AGENT"] ? $_SERVER["HTTP_USER_AGENT"] : "custombrowser";
+    }
+
     // todo this function later
-    function is_not_logged_in(){
-      return true;
+    function is_logged_in(){
+      if(isset($_SESSION) && isset($_SESSION["username"])){
+        $user_browser = $this->get_user_agent();
+        $username     = isset($_SESSION["username"])?$_SESSION["username"]:null;
+        $loginsalt    = isset($_SESSION["loginsalt"])?$_SESSION["loginsalt"]:null;
+        if($username && $loginsalt){
+          $salted_hash  = $this->get_salted_password($username);
+          $logincheck   = hash('sha512', $salted_hash.$user_browser);
+          if(hash_equals($logincheck, $loginsalt)){
+            return true;
+          }
+        }
+      }
+      return false;
     }
 
     function is_unregistered_username($username){
@@ -75,8 +93,38 @@
       return false;
     }
 
-    function create_login_session(){
+    function initialize_session(){
+      session_start();
+      session_name(SESSION_NAME);
 
+      ini_set("session.cookie_domain", SITE_ROOT);
+      ini_set("session.cookie_path", "/");
+      ini_set('session.cookie_lifetime', '900');
+      ini_set('session.use_cookies', 1);
+      ini_set('session.use_only_cookies', 1);
+      ini_set('session.use_strict_mode', 1);
+      ini_set('session.cookie_httponly', 1);
+      ini_set('session.cookie_secure', 1);
+    }
+
+    function create_login_session($username, $salted_hash){
+      if(isset($_SESSION["username"]) && isset($_SESSION["loginsalt"])){
+        $this->destroy_login_session();
+        $this->initialize_session();
+      }
+      $user_browser         =   $this->get_user_agent();
+      $_SESSION["username"] =   $username;
+      $_SESSION['loginsalt']= hash('sha512', $salted_hash.$user_browser);
+      session_save_path();
+    }
+
+    function destroy_login_session(){
+      setcookie(session_name(), '', time() - 42000);
+      $_SESSION = array();
+      unset($_SESSION);
+
+      session_write_close();
+      session_destroy();
     }
 
     function get_salted_password($username){
@@ -99,10 +147,16 @@
         // get password associated with the user
         $salted_hash  = $this->get_salted_password($username);
         if($salted_hash && password_verify($password, $salted_hash)){
+          $this->create_login_session($username, $salted_hash);
           return true;
         }
       }
       return false;
+    }
+
+
+    function logout(){
+      $this->destroy_login_session();
     }
 
   }

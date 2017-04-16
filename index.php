@@ -3,11 +3,9 @@
   require_once(dirname(__FILE__)."/__config.php");
 
   $view = new view();
-
   $user = new user();
-  $user->try_login(false);
 
-  if($user->is_not_logged_in())
+  if(!$user->is_logged_in())
   {
     if(isset($_POST["register"])){
       // process the $_POST
@@ -31,7 +29,6 @@
       // 1) salted hash passwords
       // 2) encryted channel for password
       // 3) create new session for every login
-
       if($user->login($_POST)){
         // login succeeded
         $view->redirect("home.php");

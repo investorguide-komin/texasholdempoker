@@ -4,7 +4,5 @@
 
   $view = new view();
   $user = new user();
-  $user->try_login(false);
-
-
+  $user->try_login();
   $view->render("tpl.home.php");

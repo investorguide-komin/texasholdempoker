@@ -5,6 +5,9 @@
   $json = new container();
   $code = 404;
 
+  $user = new user();
+  $user->try_login(false);
+
   if($type == "create"){
       $name = isset($_POST["name"])?$_POST["name"]:null;
       if($name){

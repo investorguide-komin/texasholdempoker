@@ -33,23 +33,6 @@
         <th>Available spots</th>
         <th>Actions</th>
       </tr>
-      <? for($i=0;$i<5;$i++){ ?>
-      <tr>
-        <td>game 1</td>
-        <td>user 1</td>
-        <td>4</td>
-        <td>
-          <a href="javascript:;" class="btn red-btn">
-            Join
-          </a>
-        </td>
-      </tr>
-      <? } ?>
+      <tbody id="tabular-tbody"></tbody>
     </table>
-
   </div>
-
-  <script type="text/javascript">
-
-
-  </script>

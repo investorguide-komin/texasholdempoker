@@ -3,7 +3,15 @@
   class view extends container{
     function __construct($args = false){
       parent::__construct($args);
+
+      $this->javascript = array();
     }
+
+    function javascript($loading_method = '') {
+			foreach($this->javascript as $js) {
+				echo('<script type="text/javascript" src="'.$js.'"></script>');
+			}
+		}
 
     function render($template){
       require_once(dirname(__FILE__)."/../templates/tpl.header.php");

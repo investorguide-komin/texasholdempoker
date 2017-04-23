@@ -12,7 +12,62 @@
         if($redirect_to_login){
           view::redirect("index.php");
         }
+      }else{
+        $user = $this->load_by_username($_SESSION['username']);
+        $this->id             = $user->id;
+        $this->username       = $user->username;
+        $this->active_game_id = $user->active_game_id;
       }
+    }
+
+    function load_by_id($id){
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT * FROM `users` WHERE id=?");
+      $query->bind_param("i", $id);
+      $query->execute();
+
+      $result = $query->get_result();
+      if($result){
+        while($row = $result->fetch_assoc()){
+          return new user($row);
+        }
+      }
+      return false;
+    }
+
+    function load_by_username($username){
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT * FROM `users` WHERE username=?");
+      $query->bind_param("s", $username);
+      $query->execute();
+
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        return new user($row);
+      }
+      return false;
+    }
+
+    function get_active_game(){
+      if(!isset($this->active_game_id) && ($this->active_game_id)){
+        $db     = database::get_db();
+        $query  = $db->prepare("SELECT active_game_id FROM `users` WHERE id=?");
+        $query->bind_param("i", $this->id);
+        $query->execute();
+
+        $result = $query->get_result();
+        while($row = $result->fetch_assoc()){
+          $this->active_game_id = $row["active_game_id"];
+        }
+      }
+      return $this->active_game_id;
+    }
+
+    function update_active_game($game_id){
+      $db     = database::get_db();
+      $query  = $db->prepare("UPDATE users SET active_game_id=? WHERE id=?");
+      $query->bind_param("ii", $game_id, $this->id);
+      $query->execute();
     }
 
     function get_user_agent(){
@@ -39,11 +94,12 @@
     function is_unregistered_username($username){
       $db = database::get_db();
       $query  = $db->prepare("SELECT count(`id`) as count FROM `users` WHERE username = ?");
-      $query->bind_param("i", $username);
+      $query->bind_param("s", $username);
       $query->execute();
+
       $result = $query->get_result();
-      if(!($result->fetch_assoc()["count"])){
-        return true;
+      while($row = $result->fetch_assoc()){
+        if(!$row["count"]){return true;}
       }
       return false;
     }
@@ -82,10 +138,12 @@
         $username = $args["username"];
         $password = $args["password"];
         $password_confirm = $args["password_confirm"];
+
         if($this->is_allowable_username($username)
           && $this->is_allowable_password($password, $password_confirm)){
             if($this->is_unregistered_username($username)){
               $this->register_user($username, $password);
+              $this->login($args);
               return true;
             }
           }
@@ -94,6 +152,7 @@
     }
 
     function initialize_session(){
+      session_save_path();
       session_start();
       session_name(SESSION_NAME);
 
@@ -105,6 +164,9 @@
       ini_set('session.use_strict_mode', 1);
       ini_set('session.cookie_httponly', 1);
       ini_set('session.cookie_secure', 1);
+      ini_set('session.gc_maxlifetime', 900);
+      ini_set('gc_probability', 100);
+      ini_set('gc_divisor', 100);
     }
 
     function create_login_session($username, $salted_hash){
@@ -115,7 +177,6 @@
       $user_browser         =   $this->get_user_agent();
       $_SESSION["username"] =   $username;
       $_SESSION['loginsalt']= hash('sha512', $salted_hash.$user_browser);
-      session_save_path();
     }
 
     function destroy_login_session(){

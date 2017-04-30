@@ -15,7 +15,7 @@
   if($game_id){
     $game   = game::load_by_id($game_id);
 
-    if($game->exists()){
+    if($game && $game->exists()){
       // whenever a user joins the game,
       // insert the user data to the game and reduce the game available spots
       if(!$game->already_joined($user)){
@@ -35,7 +35,7 @@
         $view->show_game      = true;
       }
     }else{
-      $vie->error = "This game is invalid";
+      $view->error = "This game is invalid";
     }
   }
 

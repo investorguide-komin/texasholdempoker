@@ -20,12 +20,12 @@
     }
 
     // get current pot_number
-    function get_current_pot_number(){
+    function get_current_pot_number($game_id){
       $pot_number = 0;
 
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT pot_number FROM `game_moves` WHERE id = ? ORDER BY pot_number DESC LIMIT 1");
-      $query->bind_param("i", $limit);
+      $query  = $db->prepare("SELECT pot_number FROM `game_moves` WHERE game_id = ? ORDER BY pot_number DESC LIMIT 1");
+      $query->bind_param("i", $game_id);
       $query->execute();
       $result = $query->get_result();
       while($row = $result->fetch_assoc()){

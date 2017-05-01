@@ -1,5 +1,6 @@
-document.addEventListener("DOMContentLoaded", function(event) {
+window.periodic_poll_game = false;
 
+document.addEventListener("DOMContentLoaded", function(event) {
   function load_cards_community(card_type){
     $.ajax({
       url: "ajax/cards.php?type=community",
@@ -64,16 +65,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   // update the game periodically with valid values obtained from the server
   function update_game(){
-    $.ajax({
-      url: "ajax/game.php?type=sync",
-      type: "post",
-      success: function(data){
-        var data = $.parseJSON(data);
-        if(data.code == 200){
-          update_game_values(data);
+    if(!window.periodic_poll_game){
+      $.ajax({
+        url: "ajax/game.php?type=sync",
+        type: "post",
+        success: function(data){
+          var data = $.parseJSON(data);
+          if(data.code == 200){
+            update_game_values(data);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   function update_game_values(data){
@@ -110,15 +113,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
     $(".player-you.player-cards").html(player_you_cards);
     $(".player-other.player-cards").html(player_other_cards);
 
-    if($(".game-move-description").length){
-      $(".game-move-description").html(game.move.description);
-      $(".game-move-time-left").html(game.move.time_left);
-      if(game.move.show_controls){
-        $(".player-actions").show();
-      }else{
-        $(".player-actions").hide();
-      }
-    }
     var community_cards = "";
       if(data.game.community_cards != null){
       for(var i=0;i<data.game.community_cards.length;i++){
@@ -127,6 +121,22 @@ document.addEventListener("DOMContentLoaded", function(event) {
     }
     $(".game-cards").html(community_cards);
     update_game_log();
+
+    if($(".game-move-description").length){
+      $(".game-move-description").html(game.move.description);
+      $(".game-move-time-left").html(game.move.time_left);
+      if(game.move.show_controls){
+        $(".player-actions").show();
+      }else{
+        $(".player-actions").hide();
+      }
+
+      if(parseInt(game.move.stop_timer) == 1){
+        console.log("inside stop timer");
+        console.log(window.periodic_poll_game);
+        window.periodic_poll_game = true;
+      }
+    }
   }
 
   if($(".game-table").length){

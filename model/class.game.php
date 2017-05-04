@@ -197,23 +197,24 @@
       $db     = database::get_db();
       $query  = $db->prepare("SELECT cards.id as card_id FROM cards ORDER BY RAND() LIMIT 4");
       $query->execute();
-      $result = $query->get_result();
 
-      $index  = 0;
-      $user_id= $user_one_id;
+      $result     =   $query->get_result();
+      $pot_number =   game_move::get_current_pot_number($this->id);
+      $index      =   0;
+      $user_id    =   $user_one_id;
       while($row = $result->fetch_assoc()){
-        $this->insert_card($row["card_id"], $user_id, "user");
+        metalog::log("user", "card_id = ".$row["card_id"]."; pot_number -> ".$pot_number);
+
+        $this->insert_card($row["card_id"], $user_id, "user", $pot_number);
         $index++;
 
-        if(!($index % 2)){
+        if($index == 2){
           $user_id  = $user_two_id;
         }
       }
     }
 
-    function insert_card($card_id, $user_id, $community_card){
-      $pot_number = game_move::get_current_pot_number($this->id);
-
+    function insert_card($card_id, $user_id, $community_card, $pot_number){
       $db     = database::get_db();
       $query  = $db->prepare("INSERT INTO game_cards(`game_id`, `pot_number`, `card_id`, `user_id`, `community_card`)
                               VALUES(?,?,?,?,?)");
@@ -255,7 +256,9 @@
       $query  = $db->prepare("SELECT cards.id AS card_id, cards.suit AS suit, cards.value AS value, cards.weight AS weight
                               FROM cards INNER JOIN game_cards ON
                               cards.id = game_cards.card_id
-                              WHERE game_cards.game_id=? AND game_cards.community_card!='user' AND game_cards.pot_number=?
+                              WHERE game_cards.game_id=? AND
+                              game_cards.community_card!='user'
+                              AND game_cards.pot_number=?
                               ORDER BY game_cards.id ASC");
       $query->bind_param("ii", $this->id, $pot_number);
       $query->execute();
@@ -285,31 +288,51 @@
       return $player_ids;
     }
 
-    function update_phase($phase){
+    function update_phase($phase, $pot_number){
       $db     = database::get_db();
       $query  = $db->prepare("UPDATE game set phase=? WHERE id=?");
       $query->bind_param("si", $phase, $this->id);
       $query->execute();
 
-      $this->deal_community_cards($phase);
+      if(in_array($phase, array("community", "river", "turn"))){
+        $this->deal_community_cards($phase, $pot_number);
+      }
     }
 
-    function deal_community_cards($phase){
-      $pot_number = game_move::get_current_pot_number($this->id);
-      $limit      = ($phase === "community") ? 3:1;
+    function deal_community_cards($phase, $pot_number){
+      $limit      = ($phase == "community") ? 3:1;
+      if($phase == "community"){usleep(75);}
 
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT cards.id AS card_id FROM cards
-                              WHERE id NOT IN(SELECT card_id FROM game_cards WHERE pot_number=?)
+      $query  = $db->prepare("SELECT id FROM cards
+                              WHERE cards.id NOT IN(SELECT card_id FROM game_cards WHERE pot_number=? AND game_id=?)
                               ORDER BY RAND() LIMIT ?");
-      $query->bind_param("ii", $pot_number, $limit);
+      $query->bind_param("iii", $pot_number, $game_id, $limit);
       $query->execute();
 
       $result = $query->get_result();
       while($row = $result->fetch_assoc()){
-        $this->insert_card($row["card_id"], 0, $phase);
+        metalog::log($phase, "card_id = ".$row["id"]."; pot_number -> ".$pot_number);
+        $this->insert_card($row["id"], 0, $phase, $pot_number);
       }
     }
+
+
+    function has_cards($community_type, $pot_number){
+      $card_count = 0;
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT COUNT(*) as total_cards FROM game_cards
+                              WHERE game_id=? AND pot_number=? AND community_card=?");
+      $query->bind_param("iis", $this->id, $pot_number, $community_type);
+      $query->execute();
+      $result = $query->get_result();
+
+      while($row = $result->fetch_assoc()){
+        $card_count = $row["total_cards"];
+      }
+      return ($card_count > 0) ? true : false;
+    }
+
 
     function get_game_log(){
       $game_log = "";
@@ -340,8 +363,8 @@
       return $total_moves;
     }
 
-    function get_user_id_with_active_move(){
-      $game_move  = game_move::get_current_move($this->id);
+    function get_user_id_with_active_move($pot_number){
+      $game_move  = game_move::get_current_move($this->id, $pot_number);
       if($game_move && isset($game_move->user_id)){
         return $game_move->user_id;
       }
@@ -363,50 +386,123 @@
         return false;
     }
 
-    // called once the whole set of rounds within a game has ended or a player has folded
-    function get_winner(){
-      $move= game_move::get_current_move($this->id);
+    function insert_game_result($user_ids, $pot_number, $result_type, $reason, $type = "pot"){
+      $db     = database::get_db();
+      if(count($user_ids)){
+        $query  = $db->prepare("INSERT INTO game_results(`game_id`, `pot_number`, `result_type`, `type`, `reason`)
+                                VALUES(?,?,?,?,?)");
+        $query->bind_param("iisss", $this->id, $pot_number, $result_type, $type, $reason);
+        $query->execute();
+
+        $insert_id    = $query->insert_id;
+        if($insert_id > 0){
+            foreach($user_ids as $user_id){
+              $new_query  = $db->prepare("INSERT INTO game_results_users(`game_result_id`, `user_id`)
+                                          VALUES(?,?)");
+              $new_query->bind_param("ii", $insert_id, $user_id);
+              $new_query->execute();
+            }
+        }
+      }
+    }
+
+    function get_game_result_users($game_id){
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT user_id from game_results_users where game_result_id=?");
+      $query->bind_param("i", $game_id);
+      $query->execute();
+
+      $user_ids     = array();
+      $result       = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $user_ids[] = $row["user_id"];
+      }
+      return $user_ids;
+    }
+
+    function get_game_result($type, $pot_number){
+      $game_result  = null;
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT id, result_type, reason FROM game_results
+                              WHERE type = ? AND pot_number = ?");
+      $query->bind_param("si", $type, $pot_number);
+      $query->execute();
+      $result       = $query->get_result();
+
+      while($row = $result->fetch_assoc()){
+        if(!$game_result){
+          $game_result  = new container();
+        }
+        $game_result->result_type   = $row["result_type"];
+        $game_result->reason        = $row["reason"];
+        $game_result->players       = $this->get_game_result_users($row["id"]);
+      }
+      return $game_result;
+    }
+
+    // return the winner user, losing user (or draw if it is a draw)
+    // also return description of overall result
+    function get_result($pot_number){
+      $result = $this->get_game_result("pot", $pot_number);
+      if(!$result){
+        $this->calculate_result($pot_number);
+        $result = $this->get_game_result("pot", $pot_number);
+      }
+      return $result;
+    }
+
+    function calculate_result($pot_number){
+      $winner_hand = null;
+      $result = new container();
+      $move   = game_move::get_current_move($this->id, $pot_number);
       if($move->type == "fold"){
         foreach($this->get_players() as $player){
           if($player->id != $move->user_id){
-            $winner_hand  = new container();
-            $winner_hand->player =  $player;
-            break;
+            $this->insert_game_result(array($player->id), $pot_number, "win", "Opponent folded hand");
           }
         }
       }
       else{
-        $winner_hand= null;
         $hands      = array();
+        $player_ids = array();
         $community_cards  = $this->get_community_cards();
 
         foreach($this->get_players() as $player){
           $cards  = $this->get_cards_dealt_for_user($player);
+
           $hand   = $this->calculate_hand($cards, $community_cards);
           $hand->player = $player;
-          $hands[]= $hand;
+          $player_ids[] = $player->id;
+          $hands[]      = $hand;
         }
 
         // this is always 2 because we only have 2 players
         if(count($hands) == 2){
-          if($hands[0]->hand === $hands[1]->hand){
+          if($hands[0]->hand === $hands[1]->hand){  //  same weightage for both hands, determine winner by high card
             if($hands[0]->high_card->weight > $hands[1]->high_card->weight){
-              $winner_hand= $hands[0]->hand;
+              $winner_hand= $hands[0];
             }else if($hands[0]->high_card->weight < $hands[1]->high_card->weight){
-              $winner_hand= $hands[1]->hand;
+              $winner_hand= $hands[1];
             }else if($hands[0]->high_card->weight == $hands[1]->high_card->weight){
               $winner_hand = null;
             }
           }
           else if($hands[0]->hand > $hands[1]->hand){
-            $winner_hand= $hands[0]->hand;
+            $winner_hand= $hands[0];
           }
           else{
-            $winner_hand= $hands[1]->hand;
+            $winner_hand= $hands[1];
+          }
+
+          if($winner_hand){
+            // somebody won
+            $this->insert_game_result(array($winner_hand->player->id), $pot_number, "win", $winner_hand->description);
+          }else{
+            // there was a draw
+            $this->insert_game_result($player_ids, $pot_number, "draw", "Both hands were equal");
           }
         }
       }
-      return $winner_hand;
     }
 
     function get_card_numerical_value($card_value){
@@ -439,9 +535,9 @@
         for($j=0; $j<count($second_cards); $j++){
           if(($cards[$i]->value === $second_cards[$j]->value) && ($i != $j)){
             if(isset($same_counts[$cards[$i]->value])){
-              $same_counts[$cards[$i]->value]  = 1;
-            }else{
               $same_counts[$cards[$i]->value]++;
+            }else{
+              $same_counts[$cards[$i]->value] = 1;
             }
           }
         }
@@ -451,7 +547,7 @@
     }
 
     function get_same_count($same_counts){
-      return array_slice($same_counts, 0, 1);
+      return array_pop(array_slice($same_counts, 0, 1));
     }
 
     function get_pair_count($same_counts){
@@ -533,8 +629,9 @@
         }
       }
       arsort($counts);
-      $first_count    = array_slice($counts, 0, 1);
-      $second_count   = array_slice($counts, 1, 1);
+      $first_count    = array_pop(array_slice($counts, 0, 1));
+      $second_count   = array_pop(array_slice($counts, 1, 1));
+
       if(($first_count >= MIN_FULLHOUSE_FIRSTCOUNT) && ($second_count >= MIN_FULLHOUSE_SECONDCOUNT)){
         return true;
       }
@@ -555,8 +652,8 @@
       $is_fullhouse   = $this->is_a_fullhouse($total_cards);
 
       $same_counts    = $this->get_same_counts($total_cards);
-      $pair_count     = $this->get_pair_count($same_counts);
       $same_count     = $this->get_same_count($same_counts);
+      $pair_count     = $this->get_pair_count($same_counts);
 
       if($is_straight && $is_flush){
         $is_straight_flush= true;

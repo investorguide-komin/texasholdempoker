@@ -39,8 +39,8 @@
               </div>
             </div>
             <div class="game-move-details">
-              <span class="game-move-description"></span>
-              <span class="game-move-time-left"></span>
+              <span class="game-move-description">Waiting for another player to join</span>
+              <span class="game-move-time-left">N/A</span>
             </div>
           </div>
         </div>
@@ -49,8 +49,8 @@
             <div class="player-you player-cards" style="float:right;"></div>
             <div class="player-you text-left">
               <i class="fa fa-user-circle-o fa-3x"></i><br/>
-              <div class="player-name-you">Player 1</div>
-              $<span class="player-money">1000</span>
+              <div class="player-name-you"></div>
+              $<span class="player-money">N/A</span>
             </div>
           </div>
 
@@ -76,8 +76,8 @@
             <div class="player-other player-cards"></div>
             <div class="player-other text-right">
               <i class="fa fa-user-circle-o fa-3x"></i><br/>
-              <div class="player-name-other">Player 2</div>
-              $<span class="player-money">1000</span>
+              <div class="player-name-other"></div>
+              $<span class="player-money">N/A</span>
             </div>
           </div>
           <div style="clear:both"></div>

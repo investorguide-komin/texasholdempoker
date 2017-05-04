@@ -19,7 +19,7 @@
       // whenever a user joins the game,
       // insert the user data to the game and reduce the game available spots
       if(!$game->already_joined($user)){
-        if($game->has_spots_available()){
+        if($game->has_spots_available() && $game->is_active()){
           if($game->join($user)){
             // load the view game
             $view->show_game  = true;

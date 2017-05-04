@@ -65,18 +65,17 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   // update the game periodically with valid values obtained from the server
   function update_game(){
-    if(!window.periodic_poll_game){
-      $.ajax({
-        url: "ajax/game.php?type=sync",
-        type: "post",
-        success: function(data){
-          var data = $.parseJSON(data);
-          if(data.code == 200){
-            update_game_values(data);
-          }
+    $.ajax({
+      url: "ajax/game.php?type=sync",
+      type: "post",
+      success: function(data){
+        console.log(data);
+        var data = $.parseJSON(data);
+        if(data.code == 200){
+          update_game_values(data);
         }
-      });
-    }
+      }
+    });
   }
 
   function update_game_values(data){
@@ -100,10 +99,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     var player_you_cards  = "";
     var player_other_cards= "";
-    for(var i=0; i<player_you.cards.length;i++){
-      player_you_cards+=(get_card(player_you.cards[i]));
+    if(player_you.cards != null && player_you.cards.length > 0){
+      for(var i=0; i<player_you.cards.length;i++){
+        player_you_cards+=(get_card(player_you.cards[i]));
+      }
     }
-    if(player_other.cards.length > 0){
+    if(player_other.cards != null && player_other.cards.length > 0){
       for(var i=0; i<player_other.cards.length;i++){
         player_other_cards+=(get_card(player_other.cards[i]));
       }
@@ -134,16 +135,23 @@ document.addEventListener("DOMContentLoaded", function(event) {
       if(parseInt(game.move.stop_timer) == 1){
         console.log("inside stop timer");
         console.log(window.periodic_poll_game);
-        window.periodic_poll_game = true;
+        clearInterval(window.periodic_poll_game);
+        setTimeout(function(){
+          periodic_poller();
+        }, game.move.time_left);
       }
     }
   }
 
-  if($(".game-table").length){
-    update_game();
-    setInterval(function(){
+  function periodic_poller(){
+    window.periodic_poll_game = setInterval(function(){
       update_game();
     }, 5000);
+  }
+
+  if($(".game-table").length){
+    update_game();
+    periodic_poller();
 
     setInterval(function(){
       update_timer();

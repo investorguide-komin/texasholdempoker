@@ -6,10 +6,10 @@
     }
 
     // loads the current move by game_id
-    function get_current_move($game_id){
+    function get_current_move($game_id, $pot_number){
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT * FROM `game_moves` WHERE game_id=? ORDER BY id DESC LIMIT 1");
-      $query->bind_param("i", $game_id);
+      $query  = $db->prepare("SELECT * FROM `game_moves` WHERE game_id=? AND pot_number=? ORDER BY id DESC LIMIT 1");
+      $query->bind_param("ii", $game_id, $pot_number);
       $query->execute();
       $result = $query->get_result();
 
@@ -108,7 +108,7 @@
       $query->execute();
     }
 
-    function get_suitable_round_number($game_id, $current_round_number = 0){
+    function get_suitable_round_number($game_id, $current_round_number = -1){
       $round_number = $current_round_number;
       $db     = database::get_db();
       $query  = $db->prepare("SELECT COUNT(*) as count, type FROM game_moves

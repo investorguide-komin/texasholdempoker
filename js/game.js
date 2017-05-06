@@ -80,7 +80,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   function update_game_values(data){
     var game = data.game;
-    if(!parseInt(game.move.game_complete)){
+    console.log(game);
+    console.log(game.move.game_complete);
+    console.log(game.move.game_paused);
+    if(!parseInt(game.move.game_complete) && !parseInt(game.move.game_paused)){
       var player_you  = game.player_you;
       var player_other= game.player_other;
       var community_cards = game.community_cards;
@@ -130,21 +133,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }else{
           $(".player-actions").hide();
         }
-
-        /*if(parseInt(game.move.stop_timer) == 1){
-          console.log("inside stop timer");
-          console.log(window.periodic_poll_game);
-          clearInterval(window.periodic_poll_game);
-          setTimeout(function(){
-            periodic_poller();
-          }, game.move.time_left);
-        }*/
       }
-    }else{
+    }else if(parseInt(game.move.game_complete)){
       $(".game-table").replaceWith("<div class='message'>"+
                                       game.move.description+"<br/>"+
                                       "You can view the logs of this game in Stats Logs now."+
                                     "</div>");
+    }else{
+      // game paused
+      if($(".game-move-description").length){
+        $(".game-move-description").html(game.move.description);
+        $(".game-move-time-left").html(game.move.time_left);
+      }
     }
     update_game_log();
   }

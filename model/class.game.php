@@ -40,11 +40,39 @@
       return $games;
     }
 
+    function load_games_by_phase($phase = "done"){
+      $games  = array();
+
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT id FROM `game` WHERE phase=?");
+      $query->bind_param("s", $phase);
+      $query->execute();
+
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $games[]  = game::load_by_id($row["id"]);
+      }
+      return $games;
+    }
+
 
     function load_by_id($game_id){
       $db     = database::get_db();
       $query  = $db->prepare("SELECT * from `game` WHERE id=? LIMIT 1");
       $query->bind_param("i", $game_id);
+      $query->execute();
+
+      $result = $query->get_result();
+      while ($row = $result->fetch_assoc()){
+        $game   = new game($row);
+      }
+      return $game;
+    }
+
+    function load_by_id_and_phase($game_id, $phase){
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT * from `game` WHERE id=? AND phase=? LIMIT 1");
+      $query->bind_param("is", $game_id, $phase);
       $query->execute();
 
       $result = $query->get_result();
@@ -222,6 +250,14 @@
       $query->execute();
     }
 
+    function get_human_readable_cards($cards){
+      $card_details = array();
+      foreach($cards as $card){
+        $card_details[] = $card->value." ".$card->suit;
+      }
+      return implode(", ", $card_details);
+    }
+
     // for the current game id, get the cards dealt for the user
     function get_cards_dealt_for_user($user){
       $pot_number = game_move::get_current_pot_number($this->id);
@@ -301,21 +337,26 @@
 
 
     function deal_community_cards($phase, $pot_number){
-      $limit      = ($phase == "community") ? 3:1;
+      $limit        = ($phase == "community") ? 3:1;
+      $card_details = array();
+
       if($phase == "community"){usleep(75);}
 
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT id FROM cards
+      $query  = $db->prepare("SELECT id, suit, value FROM cards
                               WHERE cards.id NOT IN(SELECT card_id FROM game_cards WHERE pot_number=? AND game_id=?)
                               ORDER BY RAND() LIMIT ?");
       $query->bind_param("iii", $pot_number, $this->id, $limit);
       $query->execute();
-
       $result = $query->get_result();
+
       while($row = $result->fetch_assoc()){
         metalog::log($phase, "card_id = ".$row["id"]."; pot_number -> ".$pot_number);
         $this->insert_card($row["id"], 0, $phase, $pot_number);
+        $card_details[] = $row["value"]." ".$row["suit"];
       }
+      game_move::create_and_close_move($this->id, 0, -1, $pot_number, 0,
+                        "Dealer deals ".$phase." cards - ".implode(", ", $card_details));
     }
 
 
@@ -356,6 +397,22 @@
       $query  = $db->prepare("SELECT `end_time`, `description` FROM `game_moves`
                               WHERE game_id=? AND end_time != '0000-00-00 00:00:00'
                               ORDER BY id DESC");
+      $query->bind_param("i", $this->id);
+      $query->execute();
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $game_log.="<b>".$row["end_time"]."</b> : ".$row["description"]."<br/>";
+      }
+      return $game_log;
+    }
+
+    function get_game_log_asc(){
+      $game_log = "";
+
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT `end_time`, `description` FROM `game_moves`
+                              WHERE game_id=? AND end_time != '0000-00-00 00:00:00'
+                              ORDER BY id ASC");
       $query->bind_param("i", $this->id);
       $query->execute();
       $result = $query->get_result();

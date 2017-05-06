@@ -8,7 +8,7 @@
     // loads the current move by game_id
     function get_current_move($game_id, $pot_number){
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT * FROM `game_moves` WHERE game_id=? AND pot_number=? ORDER BY id DESC LIMIT 1");
+      $query  = $db->prepare("SELECT * FROM `game_moves` WHERE game_id=? AND pot_number=? AND user_id != 0 ORDER BY id DESC LIMIT 1");
       $query->bind_param("ii", $game_id, $pot_number);
       $query->execute();
       $result = $query->get_result();
@@ -108,19 +108,67 @@
       $query->execute();
     }
 
-    function get_suitable_round_number($game_id, $current_round_number = -1){
-      $round_number = $current_round_number;
+    function get_last_move_type($game_id, $current_round_number = -1){
+      $type  = "";
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT COUNT(*) as count, type FROM game_moves
-                              WHERE game_id=? AND `round`=?
-                              ORDER BY id DESC");
-      $query->bind_param("ii", $game_id, $round_number);
+      $query  = $db->prepare("SELECT type FROM game_moves
+                              WHERE game_id=? AND `round`=? AND type IS NOT NULL
+                              ORDER BY id DESC LIMIT 1");
+      $query->bind_param("ii", $game_id, $current_round_number);
       $query->execute();
       $result = $query->get_result();
       while($row = $result->fetch_assoc()){
-        // since we only allow two players for now, the only way a round won't end normally is if a player makes a raise
-        if(($row["count"] >= 2) && ($row["type"] !== "raise")){
-          $round_number++;
+        $type = $row["type"];
+      }
+      return $type;
+    }
+
+    function get_suitable_round_number($game_id, $pot_number, $current_round_number = -1){
+      $round_number = $current_round_number;
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT COUNT(*) as count FROM game_moves
+                              WHERE game_id=? AND `round`=? AND pot_number=?");
+      $query->bind_param("iii", $game_id, $round_number, $pot_number);
+      $query->execute();
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        if(($row["count"] >= 2)){
+          $last_move_type = game_move::get_last_move_type($game_id, $round_number);
+
+          // since we only allow two players for now, the only way a round won't end normally is if
+          // 1) if player#2 makes a raise
+          if($last_move_type != "raise"){
+
+            // 2) or a player calls all in and the pot share is not matched
+            if($last_move_type == "all in"){
+              $pot_amount = game_move::get_current_pot_amount($game_id, $current_pot_number);
+              $game               = game::load_by_id($game_id);
+              $player_ids         = $game->get_player_ids();
+
+              $player_one_amount  = $game->get_amount($player_ids[0]);
+              $player_two_amount  = $game->get_amount($player_ids[1]);
+
+              $player_one_potshare= game_move::get_user_pot_amount($game_id, $player_ids[0], $current_pot_number);
+              $player_two_potshare= game_move::get_user_pot_amount($game_id, $player_ids[1], $current_pot_number);
+
+              if($player_one_potshare === $player_two_potshare){
+                $round_number++;
+              }
+              else if(($player_two_potshare - $player_one_potshare) > 0){ // player 2 has more money in the pot, see if player 1 has put in whatever left
+                if($player_one_amount == 0){
+                  $round_number++;
+                }
+              }
+              else if(($player_one_potshare - $player_two_potshare) > 0){ // player 1 has more money in the pot, see if player 2 has put in whatever left
+                if($player_two_amount == 0){
+                  $round_number++;
+                }
+              }
+            }
+            else{
+              $round_number++;
+            }
+          }
         }
       }
       return $round_number;

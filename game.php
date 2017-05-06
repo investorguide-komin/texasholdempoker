@@ -22,11 +22,16 @@
       if($game->phase !== "done"){
         if(!$game->already_joined($user)){
           if($game->has_spots_available() && $game->is_active()){
-            if($game->join($user)){
-              // load the view game
-              $view->show_game  = true;
+            $active_game_id = $user->get_active_game();
+            if(($active_game_id == 0) || ($active_game_id == $game_id)){
+              if($game->join($user)){
+                // load the view game
+                $view->show_game  = true;
+              }else{
+                $view->error  = "Unexpected error encountered";
+              }
             }else{
-              $view->error  = "Unexpected error encountered";
+              $view->error  = "You can only have one game active at a time";
             }
           }else{
             $view->error  = "This game is not available to join anymore";

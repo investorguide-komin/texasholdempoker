@@ -27,9 +27,21 @@
       return false;
     }
 
+    function load_all_users(){
+      $users  = array();
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT id FROM `users`");
+      $query->execute();
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $users[]  = user::load_by_id($row["id"]);
+      }
+      return $users;
+    }
+
     function load_by_id($id){
       $db     = database::get_db();
-      $query  = $db->prepare("SELECT * FROM `users` WHERE id=?");
+      $query  = $db->prepare("SELECT id, username, active_game_id, ts_inserted FROM `users` WHERE id=?");
       $query->bind_param("i", $id);
       $query->execute();
 
@@ -70,10 +82,55 @@
       return $this->active_game_id;
     }
 
+    function poll_activity($game_id){
+      $db     = database::get_db();
+      $query  = $db->prepare("UPDATE game_players SET last_poll_time=NOW()
+                              WHERE user_id=? AND game_id=?");
+      $query->bind_param("ii", $this->id, $game_id);
+      $query->execute();
+    }
+
+    function get_polltime($game_id){
+      if(!isset($this->last_poll_time)){
+        $db     = database::get_db();
+        $query  = $db->prepare("SELECT last_poll_time FROM game_players WHERE user_id=? AND game_id=?");
+        $query->bind_param("ii", $this->id, $game_id);
+        $query->execute();
+
+        $result = $query->get_result();
+        while($row = $result->fetch_assoc()){
+          $this->last_poll_time = $row["last_poll_time"];
+        }
+      }
+      return $this->last_poll_time;
+    }
+
+    function has_not_polled_since($game_id, $threshold_poll_time = 15){
+      date_default_timezone_set('America/New_York');
+      $last_poll_time  = (strtotime("now") - strtotime($this->get_polltime($game_id)));
+      if($last_poll_time > $threshold_poll_time){
+        return true;
+      }
+      return false;
+    }
+
+    function time_left_to_poll($game_id, $cutoff_time = 90){
+      date_default_timezone_set('America/New_York');
+      $time_left  = $cutoff_time - (strtotime("now") - strtotime($this->get_polltime($game_id)));
+      return (($time_left > 0) ? $time_left : 0);
+    }
+
     function update_active_game($game_id){
       $db     = database::get_db();
       $query  = $db->prepare("UPDATE users SET active_game_id=? WHERE id=?");
       $query->bind_param("ii", $game_id, $this->id);
+      $query->execute();
+    }
+
+    function has_no_active_game(){
+      $db     = database::get_db();
+      $query  = $db->prepare("UPDATE users SET active_game_id=0 WHERE id=?");
+      $query->bind_param("i", $this->id);
       $query->execute();
     }
 
@@ -222,9 +279,69 @@
       return false;
     }
 
-
     function logout(){
       $this->destroy_login_session();
+    }
+
+    function get_wins(){
+      $this->wins = $this->calculate_game_results("win");
+      return $this->wins;
+    }
+
+    function get_draws(){
+      $this->draws = $this->calculate_game_results("draw");
+      return $this->draws;
+    }
+
+    function get_losses(){
+      if(!isset($this->wins)){$this->get_wins();}
+      if(!isset($this->draws)){$this->get_draws();}
+
+      $losses = $this->get_total_completed_games() - ($this->wins + $this->draws);
+      $this->losses = ($losses >= 0) ? $losses : 0;
+      return $this->losses;
+    }
+
+    function calculate_game_results($result_type){
+      $count  = 0;
+      $type   = "game";
+
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT COUNT(*) AS count FROM `game_results`
+                              INNER JOIN `game_results_users`
+                              ON `game_results`.`id` = `game_results_users`.`game_result_id`
+                              WHERE `game_results`.type = ? AND
+                              `game_results`.result_type = ? AND
+                              `game_results_users`.`user_id` = ?");
+      $query->bind_param("ssi", $type, $result_type, $this->id);
+      $query->execute();
+
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $count = $row["count"];
+      }
+      return $count;
+    }
+
+
+    function get_total_completed_games(){
+      $count  = 0;
+      $phase  = "done";
+
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT COUNT(*) AS count FROM `game`
+                              INNER JOIN `game_players`
+                              ON `game`.`id` = `game_players`.`game_id`
+                              WHERE `game_players`.`user_id` = ?
+                              AND `game`.`phase` = ?");
+      $query->bind_param("is", $this->id, $phase);
+      $query->execute();
+
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        $count = $row["count"];
+      }
+      return $count;
     }
 
   }

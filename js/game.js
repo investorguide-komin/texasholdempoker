@@ -79,74 +79,77 @@ document.addEventListener("DOMContentLoaded", function(event) {
   }
 
   function update_game_values(data){
-    console.log(data);
     var game = data.game;
-    var player_you  = game.player_you;
-    var player_other= game.player_other;
-    var community_cards = game.community_cards;
+    if(!parseInt(game.move.game_complete)){
+      var player_you  = game.player_you;
+      var player_other= game.player_other;
+      var community_cards = game.community_cards;
 
-    $(".game-pot").html(game.pot_amount);
-    $(".player-name-you").html(player_you.name);
-    $(".player-you .player-money").html(player_you.amount);
-    $(".game-player-you-pot").html(player_you.pot_amount);
+      $(".game-pot").html(game.pot_amount);
+      $(".player-name-you").html(player_you.name);
+      $(".player-you .player-money").html(player_you.amount);
+      $(".game-player-you-pot").html(player_you.pot_amount);
 
-    $(".player-name-other").html(player_other.name);
-    $(".player-other .player-money").html(player_other.amount);
-    $(".game-player-other-pot").html(player_other.pot_amount);
+      $(".player-name-other").html(player_other.name);
+      $(".player-other .player-money").html(player_other.amount);
+      $(".game-player-other-pot").html(player_other.pot_amount);
 
-    update_button_max(player_you.amount);
-    update_check_button(player_you.amount, player_you.pot_amount, player_other.pot_amount);
+      update_button_max(player_you.amount);
+      update_check_button(player_you.amount, player_you.pot_amount, player_other.pot_amount);
 
-    var player_you_cards  = "";
-    var player_other_cards= "";
-    if(player_you.cards != null && player_you.cards.length > 0){
-      for(var i=0; i<player_you.cards.length;i++){
-        player_you_cards+=(get_card(player_you.cards[i]));
+      var player_you_cards  = "";
+      var player_other_cards= "";
+      if(player_you.cards != null && player_you.cards.length > 0){
+        for(var i=0; i<player_you.cards.length;i++){
+          player_you_cards+=(get_card(player_you.cards[i]));
+        }
       }
-    }
-    if(player_other.cards != null && player_other.cards.length > 0){
-      for(var i=0; i<player_other.cards.length;i++){
-        player_other_cards+=(get_card(player_other.cards[i]));
+      if(player_other.cards != null && player_other.cards.length > 0){
+        for(var i=0; i<player_other.cards.length;i++){
+          player_other_cards+=(get_card(player_other.cards[i]));
+        }
+      }else{
+        player_other_cards = '<div class="card" style="background:gray;"></div><div class="card" style="background:gray;"></div>';
+      }
+      $(".player-you.player-cards").html(player_you_cards);
+      $(".player-other.player-cards").html(player_other_cards);
+
+      var community_cards = "";
+        if(data.game.community_cards != null){
+        for(var i=0;i<data.game.community_cards.length;i++){
+          community_cards+=get_card(data.game.community_cards[i]);
+        }
+      }
+      $(".game-cards").html(community_cards);
+      update_game_log();
+
+      if($(".game-move-description").length){
+        $(".game-move-description").html(game.move.description);
+        $(".game-move-time-left").html(game.move.time_left);
+        if(game.move.show_controls){
+          $(".player-actions").show();
+        }else{
+          $(".player-actions").hide();
+        }
+
+        /*if(parseInt(game.move.stop_timer) == 1){
+          console.log("inside stop timer");
+          console.log(window.periodic_poll_game);
+          clearInterval(window.periodic_poll_game);
+          setTimeout(function(){
+            periodic_poller();
+          }, game.move.time_left);
+        }*/
       }
     }else{
-      player_other_cards = '<div class="card" style="background:gray;"></div><div class="card" style="background:gray;"></div>';
-    }
-    $(".player-you.player-cards").html(player_you_cards);
-    $(".player-other.player-cards").html(player_other_cards);
-
-    var community_cards = "";
-      if(data.game.community_cards != null){
-      for(var i=0;i<data.game.community_cards.length;i++){
-        community_cards+=get_card(data.game.community_cards[i]);
-      }
-    }
-    $(".game-cards").html(community_cards);
-    update_game_log();
-
-    if($(".game-move-description").length){
-      $(".game-move-description").html(game.move.description);
-      $(".game-move-time-left").html(game.move.time_left);
-      if(game.move.show_controls){
-        $(".player-actions").show();
-      }else{
-        $(".player-actions").hide();
-      }
-
-      if(parseInt(game.move.stop_timer) == 1){
-        console.log("inside stop timer");
-        console.log(window.periodic_poll_game);
-        clearInterval(window.periodic_poll_game);
-        setTimeout(function(){
-          periodic_poller();
-        }, game.move.time_left);
-      }
+      $(".game-table").replaceWith("<div class='message'>"+game.move.description+"</div>");
     }
   }
 
   function periodic_poller(){
     window.periodic_poll_game = setInterval(function(){
       update_game();
-    }, 5000);
+    }, 3000);
   }
 
   if($(".game-table").length){
@@ -158,12 +161,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
     }, 1000);
 
     function update_timer(){
-      var time  = parseInt($(".game-move-time-left").html().trim());
-      time--;
-      if(time >= 0){
-        $(".game-move-time-left").html(time);
-        if(time == 0){
-          update_game();
+      if($(".game-move-time-left").length){
+        var time  = parseInt($(".game-move-time-left").html().trim());
+        time--;
+        if(time >= 0){
+          $(".game-move-time-left").html(time);
+          if(time == 0){
+            update_game();
+          }
         }
       }
     }

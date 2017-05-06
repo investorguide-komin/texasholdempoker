@@ -127,7 +127,7 @@
     }
 
     function get_human_readable_action($username, $pot_action, $pot_money_bet){
-      return $username." calls ".$pot_action.", $".$pot_money_bet." added to the pot";
+      return $username." calls ".$pot_action.", $".$pot_money_bet." added to the pot.";
     }
 
   }

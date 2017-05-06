@@ -1,0 +1,4 @@
+Options -Indexes
+
+Header set Content-Security-Policy "default-src 'self';"
+Header set Content-Security-Policy "script-src 'self' maxcdn.bootstrapcdn.com *.googleapis.com;"

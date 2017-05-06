@@ -299,6 +299,7 @@
       }
     }
 
+
     function deal_community_cards($phase, $pot_number){
       $limit      = ($phase == "community") ? 3:1;
       if($phase == "community"){usleep(75);}
@@ -307,7 +308,7 @@
       $query  = $db->prepare("SELECT id FROM cards
                               WHERE cards.id NOT IN(SELECT card_id FROM game_cards WHERE pot_number=? AND game_id=?)
                               ORDER BY RAND() LIMIT ?");
-      $query->bind_param("iii", $pot_number, $game_id, $limit);
+      $query->bind_param("iii", $pot_number, $this->id, $limit);
       $query->execute();
 
       $result = $query->get_result();
@@ -718,11 +719,43 @@
       return $game_hand;
     }
 
+    // If any of the players have 0$ left OR
+    // if the other player has been idle for GAME_FOREFEIT_TIMEOUT seconds (=120)
+    // the game has been won
+    function has_been_won($round_has_completed = false){
+      $loser_id = 0; $winner_id = 0;
+      if($round_has_completed){
+        $player_ids = $this->get_player_ids();
+        foreach($player_ids as $player_id){
+          if($this->get_amount($player_id) === 0){
+            $loser_id = $player_id;
+          }
+        }
+        if($loser_id){
+          foreach($player_ids as $player_id){
+            if($loser_id != $player_id){
+              $winner_id  = $player_id;
+            }
+          }
+        }
+      }
+      // if winner id can still not be found, try seeing last poll time of game_player
+      if(!$winner_id){
 
-    // after selecting a winner for current round,
-    // see if the game should progress or the game must end
-    function plan_next_move(){
+      }
+      // load winner
+      if($winner_id){
+        $this->winner = user::load_by_id($winner_id);
+      }
+      return ($winner_id > 0) ? true : false;
+    }
 
+
+    function get_winner(){
+      if(!isset($this->winner)){
+        $this->has_been_won();
+      }
+      return $this->winner;
     }
 
   }

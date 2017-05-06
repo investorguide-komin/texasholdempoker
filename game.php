@@ -1,8 +1,9 @@
+
 <?php
 
   // do something fancy for ppl who open same game in two browser windows
 
-  require_once(dirname(__FILE__)."/__config.php");
+  require_once(dirname(__FILE__)."/../__config.php");
 
   $view = new view();
   $user = new user();
@@ -18,21 +19,25 @@
     if($game && $game->exists()){
       // whenever a user joins the game,
       // insert the user data to the game and reduce the game available spots
-      if(!$game->already_joined($user)){
-        if($game->has_spots_available() && $game->is_active()){
-          if($game->join($user)){
-            // load the view game
-            $view->show_game  = true;
+      if($game->phase !== "done"){
+        if(!$game->already_joined($user)){
+          if($game->has_spots_available() && $game->is_active()){
+            if($game->join($user)){
+              // load the view game
+              $view->show_game  = true;
+            }else{
+              $view->error  = "Unexpected error encountered";
+            }
           }else{
-            $view->error  = "Unexpected error encountered";
+            $view->error  = "This game is not available to join anymore";
           }
         }else{
-          $view->error  = "This game is not available to join anymore";
+          // dont mark the player as joined
+          $view->already_joined = true;
+          $view->show_game      = true;
         }
       }else{
-        // dont mark the player as joined
-        $view->already_joined = true;
-        $view->show_game      = true;
+        $view->error  = "This game has already finished.";
       }
     }else{
       $view->error = "This game is invalid";

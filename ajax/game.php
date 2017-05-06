@@ -26,10 +26,11 @@
     $game_id      = $user->get_active_game();
     $game         = game::load_by_id($game_id);
 
-    if($game->phase != "done"){ // no need to keep polling for a game that has been completed
-      if($player_other && ($player_other->id != $user->id)){
-        $player_other = $game->get_other_player($user);
-
+    if($game->phase != "done")  // no need to keep polling for a game that has been completed
+    {
+      $player_other = $game->get_other_player($user);
+      if($player_other && ($player_other->id != $user->id)) // make sure there is another player that is not the same user
+      {
         $result->players[] = $user;
         $result->players[] = $player_other;
 
@@ -194,21 +195,19 @@
           }
         }
 
-        if(($user->id > $player_other->id) && ($game->has_been_won())){
+        if(($user->id > $player_other->id) && ($game->has_been_won($result->round_complete))){
           $description        = "Game was won by ".$game->get_winner()->username;
           $move->description  = $description;
           $move->game_complete= 1;
 
           $description  = $description."; Final win amount: ".$game->get_winner()->amount;
           game_move::create_and_close_move($game->id, $game->get_winner()->id, 5, $current_pot_number, 0, $description);
-
           $game->update_phase("done", $current_pot_number);
         }
         else if(isset($result->round_complete)){
           $move->description  = $round_detail.". Next round in ... ";
           $move->show_controls= 0;
           $move->time_left    = 5;
-          $move->stop_timer   = 1;
           $game->update_phase("unstarted", 0);
         }
         else{

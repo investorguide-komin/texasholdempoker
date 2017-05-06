@@ -1,5 +1,5 @@
 <?php
-  require_once(dirname(__FILE__)."/../__config.php");
+  require_once(dirname(__FILE__)."/../../__config.php");
 
   $type = isset($_GET['type'])?$_GET['type']:false;
   $json = new container();
@@ -10,10 +10,10 @@
 
   if($type == "create"){
       $name = isset($_POST["name"])?$_POST["name"]:null;
-      if($name){
+      if($name && $user->exists()){
         $name = substr($name, 0, 35); // only allow upto 35 chars
         $game = new game();
-        $game->create($name);
+        $game->create($name, $user);
         $code = 200;
       }
   }
@@ -28,6 +28,7 @@
 
     if($game->phase != "done")  // no need to keep polling for a game that has been completed
     {
+      $game->special_case = GAME_SPECIAL_CASE_NONE;
       $player_other = $game->get_other_player($user);
       if($player_other && ($player_other->id != $user->id)) // make sure there is another player that is not the same user
       {
@@ -136,17 +137,27 @@
               $current_round_number = -1;
             }
 
-            game_move::create_move(
-                $game->id,
-                $next_player_id,
-                game_move::get_suitable_round_number($game->id, $current_round_number),
-                $current_pot_number
-              );
+            $past_round_number  = $current_round_number;
+            if($game->has_a_player_with_no_money_to_bet() && game_move::has_round_completed($game_id, $past_round_number)){
+              $game->special_case = GAME_SPECIAL_CASE_NO_MONEY_LEFT_TO_BET;
+            }
+            if($game->special_case == GAME_SPECIAL_CASE_NONE){
+              game_move::create_move(
+                  $game->id,
+                  $next_player_id,
+                  game_move::get_suitable_round_number($game->id, $current_round_number),
+                  $current_pot_number
+                );
+            }
             $current_move = game_move::get_current_move($game->id, $current_pot_number);
           }
         }
 
-        if(($current_move->round == 4) || (isset($game->round_won)))
+        if(
+            ($current_move->round == 4) ||
+            (isset($game->round_won)) ||
+            (($game->special_case == GAME_SPECIAL_CASE_NO_MONEY_LEFT_TO_BET) && $game->has_all_community_cards($current_pot_number))
+          )
         {
           // game ends at round 4
           $pot_amount         =   game_move::get_current_pot_amount($game->id, $current_pot_number);
@@ -181,8 +192,18 @@
         }
         else if($user->id > $player_other->id)  // to avoid race condition, just allowing card dealing for one user
         {
+          // if one user has 0 money left to bet, show all phases at once
+          if($game->special_case == GAME_SPECIAL_CASE_NO_MONEY_LEFT_TO_BET)
+          {
+            switch($past_round_number){
+              case 0:
+              case 1: $game->update_phase("community", $current_pot_number);
+              case 2: $game->update_phase("turn", $current_pot_number);
+              case 3: $game->update_phase("river", $current_pot_number);
+            }
+          }
           // see if we can calculate the current phase of the game
-          if(($current_move->round === 1) && (!$game->has_cards("community", $current_pot_number))){
+          else if(($current_move->round === 1) && (!$game->has_cards("community", $current_pot_number))){
               $game->update_phase("community", $current_pot_number);
           }
           else if(($current_move->round === 2) && (!$game->has_cards("turn", $current_pot_number))){
@@ -195,14 +216,15 @@
           }
         }
 
-        if(($user->id > $player_other->id) && ($game->has_been_won($result->round_complete))){
+        if($game->has_been_won($result->round_complete)){
           $description        = "Game was won by ".$game->get_winner()->username;
           $move->description  = $description;
           $move->game_complete= 1;
 
-          $description  = $description."; Final win amount: ".$game->get_winner()->amount;
+          $description  = $description."; Final win amount: $".$game->get_amount($game->get_winner()->id);
           game_move::create_and_close_move($game->id, $game->get_winner()->id, 5, $current_pot_number, 0, $description);
           $game->update_phase("done", $current_pot_number);
+          $game->insert_game_result(array($game->get_winner()->id), $current_pot_number, "win", "Opponent has no money left", "game");
         }
         else if(isset($result->round_complete)){
           $move->description  = $round_detail.". Next round in ... ";
@@ -239,6 +261,11 @@
         $result->pot_amount = game_move::get_current_pot_amount($game->id, $current_pot_number);
         $code = 200;
       }
+    }else if($game->has_been_won(true)){
+      $description        = "Game was won by ".$game->get_winner()->username;
+      $move->description  = $description;
+      $move->game_complete= 1;
+      $result->move     = $move;
     }
     $json->game   = $result;
   }
@@ -249,9 +276,7 @@
     $code = 200;
   }
   else if($type == "test"){
-    $game   = game::load_by_id(1);
-    $result = $game->get_result(0);
-    var_dump($result);
+
   }
 
   $json->code = $code;

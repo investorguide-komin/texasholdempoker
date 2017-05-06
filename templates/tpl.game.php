@@ -15,6 +15,7 @@
   .game-players{background: #966F33;}
   .game-log-encloser{padding: 0; overflow: scroll; height: 500px; }
   #raise-range{display: inline-block; width: 150px; margin-top: 25px;}
+  .message{padding: 50px 0; font-size: 24px;}
 </style>
 
 <? if($this->show_game){ ?>

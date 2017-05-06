@@ -20,6 +20,13 @@
       }
     }
 
+    function exists(){
+      if(isset($this->id)){
+        return true;
+      }
+      return false;
+    }
+
     function load_by_id($id){
       $db     = database::get_db();
       $query  = $db->prepare("SELECT * FROM `users` WHERE id=?");

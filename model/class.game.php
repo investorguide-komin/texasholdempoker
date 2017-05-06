@@ -320,7 +320,12 @@
 
 
     function has_cards($community_type, $pot_number){
-      $card_count = 0;
+      $card_count         = 0;
+      $target_card_count  = 1;
+      if($community_type == "community"){
+        $target_card_count  = 3;
+      }
+
       $db     = database::get_db();
       $query  = $db->prepare("SELECT COUNT(*) as total_cards FROM game_cards
                               WHERE game_id=? AND pot_number=? AND community_card=?");
@@ -331,7 +336,16 @@
       while($row = $result->fetch_assoc()){
         $card_count = $row["total_cards"];
       }
-      return ($card_count > 0) ? true : false;
+      return ($card_count == $target_card_count) ? true : false;
+    }
+
+    function has_all_community_cards($pot_number){
+      if( $this->has_cards("community", $pot_number) &&
+          $this->has_cards("turn", $pot_number) &&
+          $this->has_cards("river", $pot_number)){
+        return true;
+      }
+      return false;
     }
 
 
@@ -481,8 +495,10 @@
         if(count($hands) == 2){
           if($hands[0]->hand === $hands[1]->hand){  //  same weightage for both hands, determine winner by high card
             if($hands[0]->high_card->weight > $hands[1]->high_card->weight){
+              $hands[0]->description.= " & High card";
               $winner_hand= $hands[0];
             }else if($hands[0]->high_card->weight < $hands[1]->high_card->weight){
+              $hands[1]->description.= " & High card";
               $winner_hand= $hands[1];
             }else if($hands[0]->high_card->weight == $hands[1]->high_card->weight){
               $winner_hand = null;
@@ -719,6 +735,15 @@
       return $game_hand;
     }
 
+    function has_a_player_with_no_money_to_bet(){
+      foreach($this->get_player_ids() as $player_id){
+        if($this->get_amount($player_id) === 0){
+          return true;
+        }
+      }
+      return false;
+    }
+
     // If any of the players have 0$ left OR
     // if the other player has been idle for GAME_FOREFEIT_TIMEOUT seconds (=120)
     // the game has been won
@@ -738,10 +763,6 @@
             }
           }
         }
-      }
-      // if winner id can still not be found, try seeing last poll time of game_player
-      if(!$winner_id){
-
       }
       // load winner
       if($winner_id){

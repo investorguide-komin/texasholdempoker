@@ -126,6 +126,22 @@
       return $round_number;
     }
 
+    function has_round_completed($game_id, $round_number){
+      $db     = database::get_db();
+      $query  = $db->prepare("SELECT COUNT(*) as count FROM game_moves
+                              WHERE game_id=? AND `round`=?
+                              ORDER BY id DESC");
+      $query->bind_param("ii", $game_id, $round_number);
+      $query->execute();
+      $result = $query->get_result();
+      while($row = $result->fetch_assoc()){
+        if($row["count"] >= 2){
+          return true;
+        }
+      }
+      return false;
+    }
+
     function get_human_readable_action($username, $pot_action, $pot_money_bet){
       return $username." calls ".$pot_action.", $".$pot_money_bet." added to the pot.";
     }

@@ -121,7 +121,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
       }
       $(".game-cards").html(community_cards);
-      update_game_log();
 
       if($(".game-move-description").length){
         $(".game-move-description").html(game.move.description);
@@ -142,14 +141,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }*/
       }
     }else{
-      $(".game-table").replaceWith("<div class='message'>"+game.move.description+"</div>");
+      $(".game-table").replaceWith("<div class='message'>"+
+                                      game.move.description+"<br/>"+
+                                      "You can view the logs of this game in Stats Logs now."+
+                                    "</div>");
     }
+    update_game_log();
   }
 
   function periodic_poller(){
     window.periodic_poll_game = setInterval(function(){
       update_game();
-    }, 3000);
+    }, 5000);
   }
 
   if($(".game-table").length){
@@ -203,6 +206,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
     var check_value = other_pot - your_pot;
     if(check_value > your_total){
       check_value = your_total;
+    }
+    if(check_value < 0){
+      check_value = 0;
     }
     $("#check .bet-value").html("$"+check_value);
   }

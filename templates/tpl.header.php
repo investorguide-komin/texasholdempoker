@@ -31,11 +31,12 @@
       <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12">
         <div class="header-links text-right">
           <? if(isset($_SESSION['username']) && ($_SESSION['username'])){?>
-          <span class="user-detail">Logged in as <? echo htmlentities($_SESSION['username']);?></span>
+            <span class="user-detail">Logged in as <? echo htmlentities($_SESSION['username']);?></span>
+            <a href="home.php">Join Game</a>
+            <a href="stats-game.php">Game Stats</a>
+            <a href="stats-player.php">Player Stats</a>
+            <a href="logout.php">Log Out</a>
           <? } ?>
-          <a href="home.php">Join Game</a>
-          <a href="javascript:;">See Stats</a>
-          <a href="logout.php">Log Out</a>
         </div>
       </div>
       <div style="clear:both"></div>

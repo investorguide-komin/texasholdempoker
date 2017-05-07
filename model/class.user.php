@@ -138,7 +138,7 @@
       return $_SERVER["HTTP_USER_AGENT"] ? $_SERVER["HTTP_USER_AGENT"] : "custombrowser";
     }
 
-    // todo this function later
+    
     function is_logged_in(){
       if(isset($_SESSION) && isset($_SESSION["username"])){
         $user_browser = $this->get_user_agent();

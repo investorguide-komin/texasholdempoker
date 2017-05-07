@@ -47,9 +47,6 @@
             game_move::create_and_close_move($game->id, $user->id, 5, 0, 0, "Opponent lost connection");
             $game->update_phase("done", 0);
             $game->insert_game_result(array($user->id), 0, "win", "Opponent lost connection", "game");
-            foreach($game->get_players() as $player){
-              $player->has_no_active_game();
-            }
           }
       }
       else if($player_other && ($player_other->id != $user->id)) // make sure there is another player that is not the same user
@@ -264,10 +261,6 @@
           game_move::create_and_close_move($game->id, $game->get_winner()->id, 5, $current_pot_number, 0, $description);
           $game->update_phase("done", $current_pot_number);
           $game->insert_game_result(array($game->get_winner()->id), $current_pot_number, "win", "Opponent has no money left", "game");
-
-          foreach($game->get_players() as $player){
-            $player->has_no_active_game();  // since game is done, user has no more active games
-          }
         }
         else if(isset($result->round_complete)){
           $move->description  = $round_detail.". Next round in ... ";
